@@ -5,10 +5,11 @@ with open("README.md", encoding="utf-8") as f:
 
 setup(
     name="de_utils",
-    version="2.0.0",
+    version="2.1.0",
     description=(
-        "Data Engineering Utility Library for Azure ADLS Gen2, Hive Metastore, "
-        "Spark ETL, Data Quality, Lineage, Delta Lake, and Medallion Architecture"
+        "Data Engineering Utility Library — Azure ADLS, Hive, Spark ETL, "
+        "Data Quality, Profiling, Lineage, Delta Lake, Alerts, Secrets, "
+        "Retry, Pipeline Orchestration, and Medallion Architecture"
     ),
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -16,37 +17,38 @@ setup(
     author_email="data-engineering@example.com",
     url="https://github.com/your-org/de_utils",
     license="MIT",
-    packages=find_packages(exclude=["tests*", "tests_v2*"]),
+    packages=find_packages(exclude=["tests*"]),
     python_requires=">=3.8",
 
-    # ── Core dependencies ────────────────────────────────────────────────────
+    # ── Core ──────────────────────────────────────────────────────────────────
     install_requires=[
         "pyspark>=3.3.0",
     ],
 
-    # ── Optional extras ──────────────────────────────────────────────────────
+    # ── Extras ────────────────────────────────────────────────────────────────
     extras_require={
-        # Azure Data Lake Storage file-system operations
+        # Azure ADLS file-system operations
         "azure": [
             "azure-storage-file-datalake>=12.0.0",
             "azure-identity>=1.12.0",
         ],
-
-        # YAML-based config loading (ConfigLoader.from_yaml)
+        # Azure Key Vault secrets
+        "keyvault": [
+            "azure-keyvault-secrets>=4.7.0",
+            "azure-identity>=1.12.0",
+        ],
+        # YAML config loading
         "yaml": [
             "PyYAML>=6.0",
         ],
-
-        # Delta Lake support (optimize, vacuum, z-order, time travel)
+        # Delta Lake utilities (optimize, vacuum, time travel)
         "delta": [
             "delta-spark>=2.3.0",
         ],
-
-        # Great Expectations integration (ExpectationSuiteBuilder)
+        # Great Expectations integration
         "gx": [
             "great_expectations>=0.18.0",
         ],
-
         # Development & testing
         "dev": [
             "pytest>=7.4.0",
@@ -58,10 +60,10 @@ setup(
             "mypy>=1.4.0",
             "PyYAML>=6.0",
         ],
-
-        # Full install — everything above
+        # Full install — everything
         "all": [
             "azure-storage-file-datalake>=12.0.0",
+            "azure-keyvault-secrets>=4.7.0",
             "azure-identity>=1.12.0",
             "PyYAML>=6.0",
             "delta-spark>=2.3.0",
@@ -69,15 +71,14 @@ setup(
         ],
     },
 
-    # ── Entry points (optional CLI) ──────────────────────────────────────────
+    # ── CLI entry point ───────────────────────────────────────────────────────
     entry_points={
         "console_scripts": [
-            # de_utils run-audit  → query the audit log from the command line (future)
-            # "de_utils=de_utils.cli:main",
+            "de_utils=de_utils.cli:main",
         ],
     },
 
-    # ── PyPI metadata ────────────────────────────────────────────────────────
+    # ── PyPI metadata ─────────────────────────────────────────────────────────
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
@@ -95,6 +96,7 @@ setup(
     ],
     keywords=[
         "azure", "adls", "hive", "spark", "pyspark", "delta", "etl",
-        "data-engineering", "scd", "medallion", "data-quality", "lineage",
+        "data-engineering", "scd", "medallion", "data-quality", "profiling",
+        "lineage", "pipeline", "alerting", "secrets", "retry", "circuit-breaker",
     ],
 )
