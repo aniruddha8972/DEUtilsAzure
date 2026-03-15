@@ -1,34 +1,70 @@
 """
-de_utils - Data Engineering Utility Library for Azure
+de_utils — Data Engineering Utility Library for Azure
 ======================================================
-A batteries-included library for Azure Data Lake Storage,
-Hive Metastore, SCD operations, and data loading patterns.
+v2.0 — batteries-included library for Azure ADLS, Hive Metastore,
+SCD operations, data loading, data quality, lineage tracking,
+job checkpointing, Delta Lake utilities, medallion architecture,
+and Great Expectations integration.
 """
 
+# ── Core config ───────────────────────────────────────────────────────────────
 from .config import ADLSConfig, HiveConfig, SparkConfig
+from .config_loader import ConfigLoader
+
+# ── Connectivity ──────────────────────────────────────────────────────────────
 from .storage import ADLSConnector
 from .metastore import HiveMetastore
-from .table_ops import TableOperations
-from .loader import DataLoader
-from .scd import SCDHandler
-from .history import HistoryTable
+
+# ── Schema ────────────────────────────────────────────────────────────────────
 from .schema import SchemaManager
+
+# ── Table operations ──────────────────────────────────────────────────────────
+from .table_ops import TableOperations
+from .loader import DataLoader, LoadType, LoadResult
+
+# ── SCD + History ─────────────────────────────────────────────────────────────
+from .scd import SCDHandler, SCDType
+from .history import HistoryTable
+
+# ── Data Quality ──────────────────────────────────────────────────────────────
+from .quality import DataQualityChecker, Rule, DQReport
+
+# ── Lineage ───────────────────────────────────────────────────────────────────
+from .lineage import LineageTracker
+
+# ── Checkpointing ─────────────────────────────────────────────────────────────
+from .checkpoint import JobCheckpoint
+
+# ── Delta utilities ───────────────────────────────────────────────────────────
+from .delta import DeltaUtils
+
+# ── Audit log ─────────────────────────────────────────────────────────────────
+from .audit import AuditLog
+
+# ── Medallion architecture ────────────────────────────────────────────────────
+from .medallion import BronzeLoader, SilverLoader, GoldLoader
+
+# ── Great Expectations integration ────────────────────────────────────────────
+from .expectations import ExpectationSuiteBuilder, ExpectationSuite, ValidatingLoader
+
+# ── Shared helpers ────────────────────────────────────────────────────────────
 from .utils import get_logger, DataEngineeringError
 
-__version__ = "1.0.0"
-__author__ = "Data Engineering Team"
+__version__ = "2.0.0"
+__author__  = "Data Engineering Team"
 
 __all__ = [
-    "ADLSConfig",
-    "HiveConfig",
-    "SparkConfig",
-    "ADLSConnector",
-    "HiveMetastore",
-    "TableOperations",
-    "DataLoader",
-    "SCDHandler",
-    "HistoryTable",
+    "ADLSConfig", "HiveConfig", "SparkConfig", "ConfigLoader",
+    "ADLSConnector", "HiveMetastore",
     "SchemaManager",
-    "get_logger",
-    "DataEngineeringError",
+    "TableOperations", "DataLoader", "LoadType", "LoadResult",
+    "SCDHandler", "SCDType", "HistoryTable",
+    "DataQualityChecker", "Rule", "DQReport",
+    "LineageTracker",
+    "JobCheckpoint",
+    "DeltaUtils",
+    "AuditLog",
+    "BronzeLoader", "SilverLoader", "GoldLoader",
+    "ExpectationSuiteBuilder", "ExpectationSuite", "ValidatingLoader",
+    "get_logger", "DataEngineeringError",
 ]
