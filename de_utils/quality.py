@@ -49,6 +49,13 @@ if TYPE_CHECKING:
 log = get_logger(__name__)
 
 
+class Severity(str, Enum):
+    """Alert severity level for a DQ rule. ERROR fails the pipeline; WARNING does not."""
+    ERROR   = "ERROR"
+    WARNING = "WARNING"
+    INFO    = "INFO"
+
+
 class RuleType(str, Enum):
     NOT_NULL       = "not_null"
     UNIQUE         = "unique"
@@ -206,6 +213,33 @@ class DQReport:
             raise DataEngineeringError(
                 f"Data quality check failed for '{self.table_name}':\n" + "\n".join(msgs)
             )
+
+    def show(self) -> None:
+        """Print a human-readable summary of this report (alias for print_summary)."""
+        self.print_summary()
+
+    def to_json(self) -> str:
+        """Serialise this report to a JSON string."""
+        import json
+        return json.dumps({
+            "run_id":     self.run_id,
+            "table_name": self.table_name,
+            "created_at": self.created_at.isoformat(),
+            "passed":     self.passed,
+            "error_count":   len(self.errors),
+            "warning_count": len(self.warnings),
+            "results": [
+                {
+                    "rule_type":   r.rule.rule_type.value,
+                    "columns":     r.rule.columns,
+                    "description": r.rule.description,
+                    "severity":    r.rule.severity,
+                    "passed":      r.passed,
+                    "details":     str(r.details),
+                }
+                for r in self.results
+            ],
+        }, indent=2, default=str)
 
     def print_summary(self) -> None:
         total   = len(self.results)
