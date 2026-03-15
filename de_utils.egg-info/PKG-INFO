@@ -1,0 +1,918 @@
+Metadata-Version: 2.4
+Name: de_utils
+Version: 2.0.0
+Summary: Data Engineering Utility Library for Azure ADLS Gen2, Hive Metastore, Spark ETL, Data Quality, Lineage, Delta Lake, and Medallion Architecture
+Home-page: https://github.com/your-org/de_utils
+Author: Data Engineering Team
+Author-email: data-engineering@example.com
+License: MIT
+Keywords: azure,adls,hive,spark,pyspark,delta,etl,data-engineering,scd,medallion,data-quality,lineage
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Database
+Classifier: Topic :: Scientific/Engineering :: Information Analysis
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: pyspark>=3.3.0
+Provides-Extra: azure
+Requires-Dist: azure-storage-file-datalake>=12.0.0; extra == "azure"
+Requires-Dist: azure-identity>=1.12.0; extra == "azure"
+Provides-Extra: yaml
+Requires-Dist: PyYAML>=6.0; extra == "yaml"
+Provides-Extra: delta
+Requires-Dist: delta-spark>=2.3.0; extra == "delta"
+Provides-Extra: gx
+Requires-Dist: great_expectations>=0.18.0; extra == "gx"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-mock>=3.11.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+Requires-Dist: isort>=5.12.0; extra == "dev"
+Requires-Dist: mypy>=1.4.0; extra == "dev"
+Requires-Dist: PyYAML>=6.0; extra == "dev"
+Provides-Extra: all
+Requires-Dist: azure-storage-file-datalake>=12.0.0; extra == "all"
+Requires-Dist: azure-identity>=1.12.0; extra == "all"
+Requires-Dist: PyYAML>=6.0; extra == "all"
+Requires-Dist: delta-spark>=2.3.0; extra == "all"
+Requires-Dist: great_expectations>=0.18.0; extra == "all"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# de_utils v2 — Data Engineering Utility Library
+
+> A batteries-included Python library for Azure ADLS Gen2, Hive Metastore, Spark ETL,
+> Data Quality, Lineage Tracking, Delta Lake, Job Checkpointing, and Medallion Architecture.
+
+---
+
+## Table of Contents
+
+1. [Installation](#installation)
+2. [What's New in v2](#whats-new-in-v2)
+3. [Module Overview](#module-overview)
+4. [Configuration](#1-configuration)
+   - [From code](#from-code)
+   - [From YAML](#from-yaml)
+   - [From environment variables](#from-environment-variables)
+5. [ADLS Connector](#2-adls-connector)
+6. [Hive Metastore](#3-hive-metastore)
+7. [Schema Manager](#4-schema-manager)
+8. [Table Operations](#5-table-operations)
+9. [Data Loader](#6-data-loader)
+10. [History Table](#7-history-table)
+11. [SCD Functions](#8-scd-functions)
+12. [Data Quality](#9-data-quality)
+13. [Lineage Tracking](#10-lineage-tracking)
+14. [Job Checkpointing](#11-job-checkpointing)
+15. [Delta Lake Utilities](#12-delta-lake-utilities)
+16. [Audit Log](#13-audit-log)
+17. [Medallion Architecture](#14-medallion-architecture)
+18. [Great Expectations Integration](#15-great-expectations-integration)
+19. [End-to-End Example](#end-to-end-example)
+20. [Running Tests](#running-tests)
+
+---
+
+## Installation
+
+```bash
+# Core (requires PySpark)
+pip install de_utils
+
+# + Azure Data Lake Storage SDK
+pip install "de_utils[azure]"
+
+# + YAML config support
+pip install "de_utils[yaml]"
+
+# + Delta Lake utilities
+pip install "de_utils[delta]"
+
+# + Great Expectations integration
+pip install "de_utils[gx]"
+
+# Everything
+pip install "de_utils[all]"
+
+# Development + testing
+pip install "de_utils[dev]"
+```
+
+---
+
+## What's New in v2
+
+| Feature | Module | Description |
+|---|---|---|
+| **Data Quality** | `quality.py` | Declarative rule engine — null, unique, range, regex, referential, custom SQL |
+| **Lineage Tracking** | `lineage.py` | Auto-capture source→target lineage per job run, queryable dependency graph |
+| **Job Checkpointing** | `checkpoint.py` | Persistent watermarks + partition-done state for restartable incremental ETL |
+| **Delta Lake Utilities** | `delta.py` | OPTIMIZE, VACUUM, Z-ORDER, time travel, clone, restore, change data feed |
+| **Audit Log** | `audit.py` | Central structured log of every operation — timing, row counts, errors |
+| **Medallion Architecture** | `medallion.py` | `BronzeLoader`, `SilverLoader`, `GoldLoader` with per-layer opinionated defaults |
+| **GX Integration** | `expectations.py` | Auto-generate Great Expectations suites from schemas; graceful fallback to `quality` |
+| **Config from YAML/Env** | `config_loader.py` | Load all configs from YAML files or env vars — no hardcoded credentials |
+
+---
+
+## Module Overview
+
+```
+de_utils/
+├── config.py          ADLSConfig, HiveConfig, SparkConfig dataclasses
+├── config_loader.py   Load configs from YAML files or environment variables
+├── storage.py         ADLSConnector — read/write Parquet, Delta, CSV, JSON
+├── metastore.py       HiveMetastore — DDL, partitions, table properties
+├── schema.py          SchemaManager — diff, align, cast, validate
+├── table_ops.py       TableOperations — CREATE, INSERT, UPDATE, DELETE, MERGE
+├── loader.py          DataLoader — FULL, INCREMENTAL, PARTITION, MERGE, SNAPSHOT
+├── history.py         HistoryTable — row-level change capture + point-in-time
+├── scd.py             SCDHandler — SCD1, SCD2, SCD3, SCD4, SCD6 + diff()
+├── quality.py         DataQualityChecker — declarative rule engine + DQReport
+├── lineage.py         LineageTracker — source→target lineage capture
+├── checkpoint.py      JobCheckpoint — watermarks + idempotent run detection
+├── delta.py           DeltaUtils — optimize, vacuum, z-order, time travel
+├── audit.py           AuditLog — structured operation log with context manager
+├── medallion.py       BronzeLoader, SilverLoader, GoldLoader
+├── expectations.py    ExpectationSuiteBuilder, ValidatingLoader (GX integration)
+└── utils.py           Shared helpers, logger, DataEngineeringError
+```
+
+---
+
+## 1. Configuration
+
+### From code
+
+```python
+from de_utils import ADLSConfig, HiveConfig, SparkConfig
+
+adls_cfg = ADLSConfig(
+    account_name="myadlsaccount",
+    container="raw",
+    # Service principal auth (recommended for production)
+    client_id="${AZURE_CLIENT_ID}",
+    client_secret="${AZURE_CLIENT_SECRET}",
+    tenant_id="${AZURE_TENANT_ID}",
+    root_path="/data",
+)
+
+hive_cfg = HiveConfig(
+    metastore_uri="thrift://hive-metastore.example.com:9083",
+    database="silver",
+    warehouse_path=adls_cfg.path("warehouse"),
+)
+
+spark = SparkConfig(
+    app_name="DailyOrdersETL",
+    adls=adls_cfg,
+    hive=hive_cfg,
+).build_session()
+```
+
+### From YAML
+
+```yaml
+# pipeline.yml
+adls:
+  account_name: myadlsaccount
+  container: raw
+  client_id: ${AZURE_CLIENT_ID}        # env var interpolation
+  client_secret: ${AZURE_CLIENT_SECRET}
+  tenant_id: ${AZURE_TENANT_ID}
+  root_path: /data
+
+hive:
+  metastore_uri: thrift://meta:9083
+  database: silver
+  warehouse_path: abfss://wh@acct.dfs.core.windows.net/
+
+spark:
+  app_name: DailyOrdersETL
+  master: local[*]
+  enable_hive_support: true
+  extra_conf:
+    spark.sql.shuffle.partitions: "200"
+    spark.sql.adaptive.enabled: "true"
+```
+
+```python
+from de_utils import ConfigLoader
+
+spark_cfg = ConfigLoader.from_yaml("pipeline.yml")
+spark     = spark_cfg.build_session()
+
+# Or load individual configs
+adls_cfg = ConfigLoader.adls_from_yaml("pipeline.yml")
+hive_cfg = ConfigLoader.hive_from_yaml("pipeline.yml")
+```
+
+### From environment variables
+
+```bash
+export DE_ADLS_ACCOUNT_NAME=myadlsaccount
+export DE_ADLS_CONTAINER=raw
+export DE_ADLS_CLIENT_ID=...
+export DE_ADLS_CLIENT_SECRET=...
+export DE_ADLS_TENANT_ID=...
+export DE_HIVE_METASTORE_URI=thrift://meta:9083
+export DE_HIVE_DATABASE=silver
+export DE_SPARK_APP_NAME=DailyOrdersETL
+```
+
+```python
+from de_utils import ConfigLoader
+
+adls_cfg = ConfigLoader.adls_from_env()
+hive_cfg = ConfigLoader.hive_from_env()
+spark    = ConfigLoader.spark_from_env().build_session()
+```
+
+---
+
+## 2. ADLS Connector
+
+```python
+from de_utils import ADLSConnector
+
+conn = ADLSConnector(adls_cfg, spark)
+
+# ── Read ────────────────────────────────────────────────────────────────────
+raw_df   = conn.read_parquet("ingest/orders/2024/")
+delta_df = conn.read_delta("ingest/events/", version=5)     # time travel
+csv_df   = conn.read_csv("landing/customers.csv")
+json_df  = conn.read_json("landing/events/", multiline=True)
+
+# ── Write ────────────────────────────────────────────────────────────────────
+conn.write_parquet(raw_df, "staging/orders/", partition_by=["year", "month"])
+conn.write_delta(raw_df,   "silver/orders/",  mode="append")
+conn.write_csv(raw_df,     "exports/orders.csv")
+
+# ── File-system helpers (requires azure-storage-file-datalake) ────────────
+conn.create_directory("archive/2024/")
+paths  = conn.list_paths("staging/", recursive=True)
+exists = conn.path_exists("staging/orders/year=2024/")
+conn.delete_path("tmp/scratch/")
+
+# ── Path builder ─────────────────────────────────────────────────────────────
+full_path = conn.abfss("silver", "orders", "year=2024")
+# → abfss://raw@myadlsaccount.dfs.core.windows.net/data/silver/orders/year=2024
+```
+
+---
+
+## 3. Hive Metastore
+
+```python
+from de_utils import HiveMetastore, HiveConfig
+from pyspark.sql.types import StructType, StructField, StringType, LongType, IntegerType
+
+meta = HiveMetastore(HiveConfig(database="silver"), spark)
+
+# ── Database ──────────────────────────────────────────────────────────────────
+meta.create_database_if_not_exists(location=adls_cfg.path("silver"))
+meta.list_databases()
+
+# ── External table ────────────────────────────────────────────────────────────
+schema = StructType([
+    StructField("order_id",    LongType()),
+    StructField("customer_id", LongType()),
+    StructField("status",      StringType()),
+    StructField("year",        IntegerType()),
+    StructField("month",       IntegerType()),
+])
+meta.create_external_table(
+    table_name="orders",
+    schema=schema,
+    location=adls_cfg.path("silver/orders"),
+    partition_cols=["year", "month"],
+    file_format="PARQUET",
+    comment="Silver-layer orders table",
+    table_properties={"de_utils.owner": "data-team@example.com"},
+)
+
+# ── Partition management ──────────────────────────────────────────────────────
+meta.add_partition("orders", {"year": "2024", "month": "06"})
+meta.repair_table("orders")             # MSCK REPAIR TABLE
+meta.list_partitions("orders")
+meta.drop_partition("orders", {"year": "2020", "month": "01"})
+
+# ── Inspect ───────────────────────────────────────────────────────────────────
+meta.list_tables()
+meta.table_exists("orders")
+meta.describe_table("orders").show()
+meta.set_table_property("orders", "de_utils.version", "2")
+meta.drop_table("old_table", purge=True)
+```
+
+---
+
+## 4. Schema Manager
+
+```python
+from de_utils import SchemaManager
+
+sm = SchemaManager(spark)
+
+# ── Diff ──────────────────────────────────────────────────────────────────────
+diff = sm.diff_schemas(old_schema, new_schema)
+# {"added": ["region"], "dropped": [], "type_changed": ["amount"]}
+sm.print_schema_diff(old_schema, new_schema)
+
+# ── Evolve ────────────────────────────────────────────────────────────────────
+aligned_df = sm.align_to_schema(source_df, target_schema)   # reorder + add nulls
+df = sm.cast_columns(df, {"amount": "double", "event_date": "date"})
+
+# ── Validate ──────────────────────────────────────────────────────────────────
+sm.assert_schema_compatible(source_df, target_df)
+sm.validate_not_null(df, ["order_id", "customer_id"])
+sm.validate_unique(df, ["order_id"])
+
+# ── DDL helpers ───────────────────────────────────────────────────────────────
+ddl = sm.schema_to_ddl(schema, exclude=["year", "month"])
+```
+
+---
+
+## 5. Table Operations
+
+```python
+from de_utils import TableOperations
+
+ops = TableOperations(spark, database="silver")
+
+# ── CREATE ────────────────────────────────────────────────────────────────────
+ops.create_or_replace("orders", df, partition_by=["year", "month"])
+ops.create_if_not_exists("customers", dim_df)
+
+# ── INSERT ────────────────────────────────────────────────────────────────────
+ops.insert_append("orders", new_rows_df)
+ops.insert_overwrite("orders", df, partition_by=["year", "month"])  # dynamic
+
+# ── UPDATE / DELETE (Delta) ───────────────────────────────────────────────────
+ops.update("orders", condition="status = 'PENDING'", set_clause={"status": "'SHIPPED'"})
+ops.delete("orders", condition="created_date < '2020-01-01'")
+
+# ── MERGE / UPSERT ────────────────────────────────────────────────────────────
+ops.merge(
+    target_table="orders",
+    source_df=updates_df,
+    match_keys=["order_id"],
+    update_columns=["status", "updated_at"],
+    insert_when_not_matched=True,
+    delete_when_not_matched_by_source=False,
+)
+ops.upsert("orders", cdc_df, match_keys=["order_id"])   # alias for merge
+```
+
+---
+
+## 6. Data Loader
+
+```python
+from de_utils import DataLoader, LoadType
+
+loader = DataLoader(spark, database="silver")
+
+# ── Full (truncate + reload) ──────────────────────────────────────────────────
+result = loader.full_load(raw_df, "orders", partition_by=["year", "month"])
+
+# ── Incremental (watermark-based append) ─────────────────────────────────────
+result = loader.incremental_load(
+    daily_df, "orders",
+    watermark_column="updated_at",
+    last_watermark="2024-05-31 23:59:59",
+)
+
+# ── Partition overwrite ───────────────────────────────────────────────────────
+result = loader.partition_load(df_june, "orders", partition_keys=["year", "month"])
+
+# ── Merge / CDC upsert ────────────────────────────────────────────────────────
+result = loader.merge_load(cdc_df, "orders", match_keys=["order_id"])
+
+# ── Snapshot (append + snapshot_date column) ──────────────────────────────────
+result = loader.load(df, "orders_snapshot", load_type=LoadType.SNAPSHOT,
+                     snapshot_date="2024-06-30")
+
+print(result)
+# LoadResult(table='silver.orders', type=FULL, elapsed=4.2s, completed_at=...)
+```
+
+---
+
+## 7. History Table
+
+```python
+from de_utils import HistoryTable
+
+hist = HistoryTable(spark, database="gold")
+
+# ── First run: create + seed ──────────────────────────────────────────────────
+hist.init_history_table(
+    base_table="orders",
+    source_df=df,
+    key_columns=["order_id"],
+    tracked_columns=["status", "amount", "address"],
+    location=adls_cfg.path("gold/orders_hist"),
+)
+
+# ── Every subsequent run: capture changes ────────────────────────────────────
+result = hist.capture(daily_df, "orders", key_columns=["order_id"])
+# HistoryCaptureResult(inserts=120, updates=45, deletes=3)
+
+# ── Point-in-time query ───────────────────────────────────────────────────────
+snapshot = hist.get_version_at("orders", as_of="2024-03-01 00:00:00")
+
+# ── Full audit trail ──────────────────────────────────────────────────────────
+all_versions = hist.get_full_history("orders")
+```
+
+Metadata columns added automatically:
+
+| Column | Type | Description |
+|---|---|---|
+| `_valid_from` | TIMESTAMP | When this version became active |
+| `_valid_to` | TIMESTAMP | When superseded (`9999-12-31` = still current) |
+| `_is_current` | BOOLEAN | Convenience flag for current row |
+| `_row_hash` | STRING | MD5 hash of tracked columns |
+| `_load_timestamp` | TIMESTAMP | When written to history table |
+| `_operation` | STRING | `INSERT` / `UPDATE` / `DELETE` |
+
+---
+
+## 8. SCD Functions
+
+```python
+from de_utils import SCDHandler
+
+scd = SCDHandler(spark, database="gold")
+
+# ── SCD Type 1 — Overwrite (no history) ──────────────────────────────────────
+scd.apply_scd1("dim_customer", staging_df, key_columns=["customer_id"],
+               update_columns=["email", "phone", "address"])
+
+# ── SCD Type 2 — Full history (new row per change) ───────────────────────────
+result = scd.apply_scd2(
+    target_table="dim_customer",
+    source_df=staging_df,
+    key_columns=["customer_id"],
+    tracked_columns=["email", "address"],
+    effective_date="2024-06-01 00:00:00",
+)
+# SCD2Result(new_inserts=30, updates=12)
+
+# ── SCD Type 3 — Previous-value columns ──────────────────────────────────────
+# Target must have: email, prev_email, address, prev_address
+scd.apply_scd3("dim_customer", staging_df,
+               key_columns=["customer_id"],
+               tracked_columns=["email", "address"])
+
+# ── SCD Type 4 — Separate history table ──────────────────────────────────────
+scd.apply_scd4("dim_customer", "dim_customer_hist", staging_df,
+               key_columns=["customer_id"])
+
+# ── SCD Type 6 — Hybrid (1+2+3) ──────────────────────────────────────────────
+scd.apply_scd6("dim_customer", staging_df,
+               key_columns=["customer_id"],
+               tracked_columns=["email", "address"])
+
+# ── Diff utility ──────────────────────────────────────────────────────────────
+diff_df = scd.diff(current_df, incoming_df, key_columns=["customer_id"],
+                   compare_columns=["email", "address"])
+# Returns _diff_type: UNCHANGED | CHANGED | NEW | DELETED
+```
+
+---
+
+## 9. Data Quality
+
+```python
+from de_utils import DataQualityChecker, Rule, Severity
+
+qc = DataQualityChecker(spark, table_name="silver.orders")
+
+# ── Add rules ─────────────────────────────────────────────────────────────────
+qc.add_rule(Rule.not_null("order_id"))
+qc.add_rule(Rule.not_null("customer_id"))
+qc.add_rule(Rule.unique(["order_id"]))
+qc.add_rule(Rule.min_value("amount", 0.0))
+qc.add_rule(Rule.max_value("amount", 1_000_000.0))
+qc.add_rule(Rule.between("year", 2020, 2030))
+qc.add_rule(Rule.allowed_values("status", ["PENDING","SHIPPED","DELIVERED","CANCELLED"]))
+qc.add_rule(Rule.regex("email", r"^[^@]+@[^@]+\.[^@]+$"))
+qc.add_rule(Rule.row_count(">=", 1))
+qc.add_rule(Rule.referential("customer_id", "gold.dim_customer", "customer_id"))
+qc.add_rule(Rule.custom_sql(
+    "SELECT * FROM {table} WHERE amount IS NOT NULL AND amount < 0",
+    description="No negative amounts",
+))
+
+# Downgrade a rule to WARNING — won't fail the pipeline
+qc.add_rule(Rule.not_null("notes", severity=Severity.WARNING))
+
+# ── Run ───────────────────────────────────────────────────────────────────────
+report = qc.run(df)
+report.show()
+# ════════════════════════════════════════════
+#   Data Quality Report — silver.orders  [✅ PASSED]
+#   Run at: 2024-06-01T10:00:00   Total rows: 50000
+# ════════════════════════════════════════════
+#   ✅  [ERROR  ] not_null               order_id
+#   ✅  [ERROR  ] unique                 <table>
+#   ✅  [ERROR  ] min_value              amount
+#   ⚠️   [WARNING] not_null               notes — 320 violations (0.6%)
+# ════════════════════════════════════════════
+
+report.assert_no_failures()          # raises DataEngineeringError if any ERROR fails
+report.to_json()                     # structured JSON for downstream systems
+
+# ── Persist report to a quality log table ────────────────────────────────────
+qc.save_report(report, results_table="gold._dq_log")
+```
+
+---
+
+## 10. Lineage Tracking
+
+```python
+from de_utils import LineageTracker
+
+tracker = LineageTracker(spark, lineage_table="gold._lineage", job_name="daily_orders_etl")
+
+# ── Context manager (auto-captures timing + row counts) ───────────────────────
+with tracker.track(source="bronze.orders_raw", target="silver.orders") as rec:
+    transformed_df = transform(raw_df)
+    transformed_df.write.mode("append").saveAsTable("silver.orders")
+    rec.rows_read    = raw_df.count()
+    rec.rows_written = transformed_df.count()
+
+# ── Manual record ─────────────────────────────────────────────────────────────
+tracker.record(
+    source="bronze.raw",
+    target="silver.orders",
+    transformation_type="INCREMENTAL",
+    rows_read=50000,
+    rows_written=49800,
+    extra_metadata={"watermark": "2024-06-01"},
+)
+tracker.save()   # flush buffered records to lineage table
+
+# ── Query lineage ─────────────────────────────────────────────────────────────
+tracker.get_upstream("silver.orders").show()
+tracker.get_downstream("bronze.orders_raw").show()
+tracker.get_job_runs("daily_orders_etl", last_n=10).show()
+```
+
+---
+
+## 11. Job Checkpointing
+
+```python
+from de_utils import JobCheckpoint
+
+cp = JobCheckpoint(spark, state_table="gold._job_state", job_name="orders_incremental")
+
+# ── Watermark management ──────────────────────────────────────────────────────
+last_wm = cp.get_watermark("updated_at")      # None on first run
+df = spark.table("bronze.orders").filter(
+    f"updated_at > '{last_wm or '1970-01-01'}'"
+)
+
+# Process data ...
+
+new_wm = df.agg({"updated_at": "max"}).collect()[0][0]
+cp.set_watermark("updated_at", str(new_wm))
+cp.commit()    # atomically write all pending state
+
+# ── Idempotent partition detection ────────────────────────────────────────────
+partition = "2024-06-01"
+if cp.is_already_run(partition):
+    print(f"Partition {partition} already processed — skipping")
+else:
+    process(partition)
+    cp.mark_partition_done(partition)
+
+# ── Arbitrary key-value state ─────────────────────────────────────────────────
+cp.set("last_row_count", "50000")
+count = cp.get("last_row_count")
+
+# ── Inspect state ─────────────────────────────────────────────────────────────
+cp.get_all_state().show()
+cp.clear_state()    # reset job (e.g. for full reload)
+```
+
+---
+
+## 12. Delta Lake Utilities
+
+```python
+from de_utils import DeltaUtils
+
+du = DeltaUtils(spark)
+
+# ── Maintenance ───────────────────────────────────────────────────────────────
+du.optimize("silver.orders")
+du.optimize("silver.orders", zorder_by=["customer_id", "order_date"])
+du.vacuum("silver.orders", retention_hours=168)   # 7 days
+
+# ── History & time travel ─────────────────────────────────────────────────────
+du.show_history("silver.orders").show()
+v5_df     = du.read_version("silver.orders", version=5)
+ts_df     = du.read_timestamp("silver.orders", timestamp="2024-06-01 00:00:00")
+du.restore("silver.orders", version=5)
+
+# ── Clone ─────────────────────────────────────────────────────────────────────
+du.clone("silver.orders", "gold.orders_backup", shallow=True)   # zero-copy
+du.clone("silver.orders", "gold.orders_backup", shallow=False)  # deep copy
+
+# ── Change data feed ──────────────────────────────────────────────────────────
+changes_df = du.read_changes("silver.orders", start_version=10, end_version=20)
+
+# ── Table info ────────────────────────────────────────────────────────────────
+du.detail("silver.orders").show()
+du.is_delta_table("silver.orders")        # True / False
+du.convert_to_delta("silver.old_parquet") # convert Parquet → Delta in place
+```
+
+---
+
+## 13. Audit Log
+
+```python
+from de_utils import AuditLog
+
+audit = AuditLog(spark, audit_table="gold._audit_log", job_name="daily_etl")
+
+# ── Manual entry ──────────────────────────────────────────────────────────────
+audit.log(
+    table="silver.orders",
+    operation="FULL_LOAD",
+    rows_inserted=50000,
+    status="SUCCESS",
+)
+
+# ── Context manager (auto-captures timing + errors) ───────────────────────────
+with audit.capture("silver.orders", "MERGE") as entry:
+    ops.merge("silver.orders", updates_df, match_keys=["order_id"])
+    entry.rows_updated  = 1200
+    entry.rows_inserted = 300
+
+# Any exception inside the context manager is caught, logged as FAILED,
+# then re-raised — so your pipeline still fails fast.
+
+# ── Flush buffered entries to the audit table ─────────────────────────────────
+audit.flush()
+
+# ── Query helpers ─────────────────────────────────────────────────────────────
+audit.get_table_history("silver.orders").show()
+audit.get_failed_jobs(since="2024-01-01").show()
+audit.get_run_summary(run_id="abc-123").show()
+```
+
+Audit log schema:
+
+| Column | Description |
+|---|---|
+| `run_id` | UUID per job invocation |
+| `job_name` | Passed to `AuditLog(job_name=...)` |
+| `table_name` | Target table |
+| `operation` | FULL_LOAD / MERGE / SCD2 / DQ_CHECK / etc. |
+| `rows_inserted` | Count of inserted rows |
+| `rows_updated` | Count of updated rows |
+| `rows_deleted` | Count of deleted rows |
+| `status` | SUCCESS / FAILED / SKIPPED |
+| `error_message` | Exception message if status=FAILED |
+| `started_at` | Operation start timestamp |
+| `ended_at` | Operation end timestamp |
+| `duration_seconds` | Elapsed time |
+
+---
+
+## 14. Medallion Architecture
+
+```python
+from de_utils import BronzeLoader, SilverLoader, GoldLoader
+
+# ── Bronze: land raw data as-is ───────────────────────────────────────────────
+bronze = BronzeLoader(spark, adls_config=adls_cfg, database="bronze")
+bronze.ingest(
+    source_df=raw_df,
+    target_table="orders_raw",
+    source_tag="abfss://landing@acct.dfs.core.windows.net/orders/2024/06/",
+)
+# Automatically adds: _ingest_ts, _source_file, _run_id, _batch_date
+
+# ── Silver: cleanse, deduplicate, enforce schema ───────────────────────────────
+silver = SilverLoader(spark, database="silver")
+silver.load(
+    source_df=bronze_df,
+    target_table="orders",
+    key_columns=["order_id"],
+    partition_keys=["year", "month"],
+    not_null_columns=["order_id", "customer_id"],
+    cast_map={"amount": "double", "order_date": "date"},
+    dedup=True,
+    target_schema=orders_schema,   # optional schema enforcement
+)
+
+# ── Gold: SCD2 dimensions or aggregated facts ─────────────────────────────────
+gold = GoldLoader(spark, database="gold")
+
+# Dimension table with full SCD2 history
+gold.load_dimension(
+    source_df=silver_df,
+    target_table="dim_orders",
+    key_columns=["order_id"],
+    tracked_columns=["status", "amount"],
+)
+
+# Fact / aggregate table with built-in DQ checks
+gold.load_fact(
+    source_df=silver_df,
+    target_table="fact_daily_orders",
+    partition_keys=["year", "month", "day"],
+    dq_rules=[
+        Rule.not_null("order_id"),
+        Rule.min_value("amount", 0),
+        Rule.row_count(">=", 1),
+    ],
+)
+```
+
+---
+
+## 15. Great Expectations Integration
+
+```python
+from de_utils import ExpectationSuiteBuilder, ValidatingLoader, LoadType
+
+builder = ExpectationSuiteBuilder(spark, suite_name="orders_suite")
+
+# ── Auto-generate a suite from a schema ───────────────────────────────────────
+suite = builder.from_schema(
+    schema=orders_schema,
+    not_null_keys=["order_id", "customer_id"],
+    unique_keys=["order_id"],
+    numeric_ranges={"amount": (0, 1_000_000)},
+    allowed_values={"status": ["PENDING","SHIPPED","DELIVERED","CANCELLED"]},
+)
+
+# ── Validate a DataFrame against the suite ────────────────────────────────────
+result = builder.validate(df, suite)
+builder.assert_passed(result)    # raises if any expectation fails
+
+# ── Wire validation into DataLoader ──────────────────────────────────────────
+vloader = ValidatingLoader(spark, database="silver", suite=suite)
+vloader.load(df, "orders", load_type=LoadType.PARTITION, partition_keys=["year","month"])
+# Validates BEFORE writing — aborts if validation fails
+
+# ── Save / load suites ────────────────────────────────────────────────────────
+builder.save_suite(suite, path="abfss://meta@acct.dfs.core.windows.net/suites/")
+suite = builder.load_suite(path="abfss://meta@acct.dfs.core.windows.net/suites/orders_suite.json")
+```
+
+> **Note:** If `great_expectations` is not installed, `ExpectationSuiteBuilder` automatically falls back to `de_utils.quality` so your pipeline continues to work.
+
+---
+
+## End-to-End Example
+
+A complete Bronze → Silver → Gold pipeline with quality checks, lineage, checkpointing, and audit logging:
+
+```python
+from de_utils import (
+    ConfigLoader, ADLSConnector,
+    BronzeLoader, SilverLoader, GoldLoader,
+    DataQualityChecker, Rule,
+    LineageTracker, JobCheckpoint, AuditLog,
+    HistoryTable,
+)
+
+# ── Bootstrap ─────────────────────────────────────────────────────────────────
+spark    = ConfigLoader.from_yaml("pipeline.yml").build_session()
+adls_cfg = ConfigLoader.adls_from_yaml("pipeline.yml")
+conn     = ADLSConnector(adls_cfg, spark)
+
+audit   = AuditLog(spark,    audit_table="gold._audit_log",  job_name="daily_orders")
+tracker = LineageTracker(spark, lineage_table="gold._lineage", job_name="daily_orders")
+cp      = JobCheckpoint(spark, state_table="gold._job_state", job_name="daily_orders")
+
+# ── Bronze: ingest raw ────────────────────────────────────────────────────────
+with audit.capture("bronze.orders_raw", "INGEST") as entry:
+    raw_df = conn.read_parquet("landing/orders/2024/06/")
+    BronzeLoader(spark, adls_cfg, database="bronze").ingest(
+        raw_df, "orders_raw", source_tag="landing/orders/2024/06/"
+    )
+    entry.rows_inserted = raw_df.count()
+
+# ── Silver: cleanse + DQ ──────────────────────────────────────────────────────
+last_wm = cp.get_watermark("updated_at")
+
+with audit.capture("silver.orders", "INCREMENTAL"), \
+     tracker.track("bronze.orders_raw", "silver.orders"):
+    bronze_df = spark.table("bronze.orders_raw") \
+        .filter(f"updated_at > '{last_wm or '1970-01-01'}'")
+
+    qc = DataQualityChecker(spark, table_name="silver.orders")
+    qc.add_rule(Rule.not_null("order_id"))
+    qc.add_rule(Rule.unique(["order_id"]))
+    qc.add_rule(Rule.min_value("amount", 0))
+    qc.run(bronze_df).assert_no_failures()
+
+    SilverLoader(spark, database="silver").load(
+        bronze_df, "orders",
+        key_columns=["order_id"],
+        partition_keys=["year", "month"],
+        cast_map={"amount": "double"},
+        dedup=True,
+    )
+
+    new_wm = bronze_df.agg({"updated_at": "max"}).collect()[0][0]
+    cp.set_watermark("updated_at", str(new_wm))
+    cp.commit()
+
+# ── Gold: SCD2 dimension + history ───────────────────────────────────────────
+with audit.capture("gold.dim_orders", "SCD2"), \
+     tracker.track("silver.orders", "gold.dim_orders"):
+    silver_df = spark.table("silver.orders")
+    GoldLoader(spark, database="gold").load_dimension(
+        silver_df, "dim_orders",
+        key_columns=["order_id"],
+        tracked_columns=["status", "amount"],
+    )
+    HistoryTable(spark, database="gold").capture(
+        silver_df, "orders", key_columns=["order_id"]
+    )
+
+audit.flush()
+tracker.save()
+print("Pipeline complete ✅")
+```
+
+---
+
+## Running Tests
+
+```bash
+# Install dev dependencies
+pip install "de_utils[dev]"
+
+# Run all 243 tests
+pytest tests_v2/ -v
+
+# With coverage report
+pytest tests_v2/ -v --cov=de_utils_v2 --cov-report=term-missing
+
+# Run a single module
+pytest tests_v2/test_quality.py -v
+pytest tests_v2/test_medallion.py -v
+```
+
+| Test file | Tests | Coverage |
+|---|---|---|
+| `test_config.py` | 15 | ADLSConfig, HiveConfig, SparkConfig |
+| `test_config_loader.py` | 18 | YAML loading, env var loading, interpolation |
+| `test_utils.py` | 16 | Logger, validators, helpers |
+| `test_schema.py` | 17 | Diff, align, cast, validate |
+| `test_table_ops.py` | 11 | CREATE, INSERT, UPDATE, MERGE, UPSERT |
+| `test_loader.py` | 13 | FULL, INCREMENTAL, PARTITION, MERGE, SNAPSHOT |
+| `test_history.py` | 14 | Init, capture (insert/update/delete), point-in-time |
+| `test_scd.py` | 15 | SCD1/2/3/6, diff |
+| `test_quality.py` | 28 | All rule types, report, assert, save |
+| `test_lineage.py` | 7 | Record, context manager, query |
+| `test_checkpoint.py` | 11 | Watermark, partition-done, key-value state |
+| `test_delta.py` | 11 | Optimize, vacuum, time travel, clone |
+| `test_audit.py` | 11 | Log, context manager, query helpers |
+| `test_medallion.py` | 16 | Bronze/Silver/Gold loaders |
+| `test_expectations.py` | 17 | Suite from schema, validate, fallback |
+| `test_storage.py` | 12 | Read/write, path helpers, mocked Azure SDK |
+| `test_metastore.py` | 11 | Database, table DDL, partitions, properties |
+| **Total** | **243** | |
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE) for details.
