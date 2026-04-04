@@ -50,3 +50,19 @@ __all__ = [
     "Pipeline", "PipelineResult", "TaskStatus",
     "get_logger", "DataEngineeringError",
 ]
+
+# ── Databricks compatibility ───────────────────────────────────────────────────
+from .databricks import (
+    DatabricksConfig,
+    DatabricksSession,
+    DatabricksSecrets,
+    DBFSConnector,
+    MountConnector,
+    DatabricksTableOps,
+    DatabricksLoader,
+    DatabricksAuditLog,
+    DatabricksCheckpoint,
+    NotebookUtils,
+    is_databricks,
+    is_community_edition,
+)
